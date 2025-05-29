@@ -7,9 +7,11 @@ import (
 	"log"
 	"os"
 
+	"9fans.net/acme-lsp/internal/acmeutil"
 	"9fans.net/acme-lsp/internal/lsp/acmelsp"
 	"9fans.net/acme-lsp/internal/lsp/acmelsp/config"
 	"9fans.net/acme-lsp/internal/lsp/cmd"
+	"9fans.net/internal/go-lsp/lsp/protocol"
 )
 
 //go:generate ../../scripts/mkdocs.sh
@@ -137,6 +139,14 @@ func run(cfg *config.Config, args []string) error {
 	if err != nil {
 		return fmt.Errorf("CurrentWindowRemoteCmd failed: %v", err)
 	}
+	win, err := acmeutil.OpenCurrentWin()
+	if err != nil {
+		return err
+	}
+	name, err := win.Filename()
+	if err != nil {
+		return err
+	}
 
 	ctx := context.Background()
 
@@ -146,7 +156,11 @@ func run(cfg *config.Config, args []string) error {
 	case "def":
 		err = rc.Definition(ctx, false)
 	case "fmt":
-		err = rc.OrganizeImportsAndFormat(ctx)
+		var fopts *protocol.FormattingOptions
+		if srv := serverSet.MatchFile(name); srv != nil {
+			fopts = &srv.FormattingOptions
+		}
+		err = rc.OrganizeImportsAndFormat(ctx, fopts)
 	case "hov":
 		err = rc.Hover(ctx)
 	case "refs":

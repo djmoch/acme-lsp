@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"9fans.net/acme-lsp/internal/acmeutil"
 	"9fans.net/acme-lsp/internal/lsp"
 	"9fans.net/acme-lsp/internal/lsp/acmelsp"
 	"9fans.net/acme-lsp/internal/lsp/acmelsp/config"
@@ -122,6 +123,10 @@ func main() {
 
 func run(cfg *config.Config, args []string) error {
 	ctx := context.Background()
+	ss, err := acmelsp.NewServerSet(cfg, acmelsp.NewDiagnosticsWriter())
+	if err != nil {
+		return fmt.Errorf("failed to create server set: %v", err)
+	}
 
 	if len(args) == 0 {
 		usage()
@@ -197,6 +202,14 @@ func run(cfg *config.Config, args []string) error {
 	if err != nil {
 		return err
 	}
+	win, err := acmeutil.OpenWin(winid)
+	if err != nil {
+		return err
+	}
+	name, err := win.Filename()
+	if err != nil {
+		return err
+	}
 
 	rc := acmelsp.NewRemoteCmd(server, winid)
 
@@ -225,7 +238,11 @@ func run(cfg *config.Config, args []string) error {
 		args = args[1:]
 		return rc.Definition(ctx, len(args) > 0 && args[0] == "-p")
 	case "fmt":
-		return rc.OrganizeImportsAndFormat(ctx)
+		var fopts *protocol.FormattingOptions
+		if srv := ss.MatchFile(name); srv != nil {
+			fopts = &srv.FormattingOptions
+		}
+		return rc.OrganizeImportsAndFormat(ctx, fopts)
 	case "hov":
 		return rc.Hover(ctx)
 	case "impls":

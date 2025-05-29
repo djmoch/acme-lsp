@@ -205,9 +205,13 @@ func (fm *FileManager) format(winid int, name string) error {
 		return nil // Unknown language server.
 	}
 	return fm.withClient(winid, name, func(c *Client, w *acmeutil.Win) error {
+		var fopts *protocol.FormattingOptions
+		if srv := fm.ss.MatchFile(name); srv != nil {
+			fopts = &srv.FormattingOptions
+		}
 		doc := &protocol.TextDocumentIdentifier{
 			URI: text.ToURI(name),
 		}
-		return CodeActionAndFormat(context.Background(), c, doc, w, fm.cfg.CodeActionsOnPut)
+		return CodeActionAndFormat(context.Background(), c, doc, w, fm.cfg.CodeActionsOnPut, fopts)
 	})
 }
